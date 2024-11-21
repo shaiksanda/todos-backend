@@ -1,0 +1,32 @@
+POST http://localhost:3004/register
+Content-Type: application/json
+
+{
+    "username":"sanni",
+    "password":"9059",
+    "gender":"Male",
+    "fullname":"Shaik Sandani"
+}
+###
+POST http://localhost:3004/login
+Content-Type: application/json
+
+{
+    "username":"sanni",
+    "password":"9059"
+}
+
+###
+POST http://localhost:3004/todos 
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NzNkOGE5NDMzZDcyNGNlNjUzMWMxZWEiLCJ1c2VybmFtZSI6InNhbm5pIiwiZnVsbG5hbWUiOiJTaGFpayBTYW5kYW5pIiwiZ2VuZGVyIjoiTWFsZSIsImlhdCI6MTczMjE2MDYzOSwiZXhwIjoxNzMyMTY0MjM5fQ.gTfdwIyfzd4AxjjvBTOFCumjTQVEWoFW27WbR9uY9l4
+
+{
+    "todo": "Pay electricity bill",
+    "tag": "Finance",
+    "priority": "high"
+}
+###
+GET http://localhost:3004/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NzNkOGE5NDMzZDcyNGNlNjUzMWMxZWEiLCJ1c2VybmFtZSI6InNhbm5pIiwiZnVsbG5hbWUiOiJTaGFpayBTYW5kYW5pIiwiZ2VuZGVyIjoiTWFsZSIsImlhdCI6MTczMjE2MDYzOSwiZXhwIjoxNzMyMTY0MjM5fQ.gTfdwIyfzd4AxjjvBTOFCumjTQVEWoFW27WbR9uY9l4
+
