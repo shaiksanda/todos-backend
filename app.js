@@ -5,7 +5,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("./models/users");
 const Todo = require("./models/todos");
-const path=require("path");
+
 const cors = require('cors');
 require('dotenv').config();
 
