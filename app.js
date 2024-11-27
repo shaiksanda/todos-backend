@@ -70,25 +70,53 @@ app.post("/todos", authenticateToken, async (req, res) => {
   }
 });
 
+app.get("/users", authenticateToken, async (req, res) => {
+  const userId = req.user.userId; // Extract userId from req.user
+  try {
+    const user = await User.findById(userId); // Query User model by userId
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+    res.status(200).send(user); // Send user data if found
+  } catch (error) {
+    res.status(500).send({ message: "Error retrieving user", error: error.message });
+  }
+});
+
+
 
 
 app.get("/todos", authenticateToken, async (req, res) => {
-  const { tag, status,priority } = req.query; 
-  
+  const { tag, status, priority, selectedDate } = req.query;
+
   const filter = {};
-  if (tag) filter.tag = tag; 
+  
+  // Add filters for tag, status, and priority if provided
+  if (tag) filter.tag = tag;
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
+
+  // Add filter for selectedDate if provided
+  if (selectedDate) {
+    const date = new Date(selectedDate);
+    const nextDay = new Date(date);
+    nextDay.setDate(date.getDate() + 1);
+
+    // Filter by createdAt date range
+    filter.createdAt = { $gte: date, $lt: nextDay };
+  }
+
   try {
-      
-      const todos = await Todo.find(filter);
-      
-      
-      res.send(todos);
+    const todos = await Todo.find(filter); // Find todos with applied filters
+    res.status(200).send(todos);           // Send filtered todos
   } catch (error) {
-      res.status(500).send({ message: "Error retrieving todos", error: error.message });
+    res.status(500).send({
+      message: "Error retrieving todos",
+      error: error.message,
+    });
   }
 });
+
 
 app.put('/todos/:todoId',authenticateToken, async (req, res) => {
   const { todoId } = req.params;
