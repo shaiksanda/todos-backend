@@ -34,28 +34,29 @@ connectToMongoDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const authenticateToken=(req,res,next)=>{
-  let jwtToken;
-  const authHeader=req.headers['authorization']
-  if(authHeader!==undefined){
-    jwtToken=authHeader.split(" ")[1]
-  }
-  if (jwtToken===undefined) {
-    res.status(401).send("Invalid Jwt Token");
-  }
-  else{
-    jwt.verify(jwtToken,process.env.JWT_SECRET,(err,payload)=>{
-      if (err){
-        res.status(401).send("Invalid Jwt Token");
-      }
-      else{
-        req.user={userId:payload.userId,username:payload.username}
-        next()
-      }
-    })
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+
+  if (!authHeader) {
+    return res.status(401).json({ message: "Authorization header missing" });
   }
 
-}
+  const jwtToken = authHeader.split(" ")[1];
+
+  if (!jwtToken) {
+    return res.status(401).json({ message: "Invalid JWT Token" });
+  }
+
+  jwt.verify(jwtToken, process.env.JWT_SECRET, (err, payload) => {
+    if (err) {
+      return res.status(401).json({ message: "Invalid or expired JWT Token" });
+    }
+
+    req.user = { userId: payload.userId, username: payload.username };
+    next();
+  });
+};
+
 
 
 app.post("/todos", authenticateToken, async (req, res) => {
