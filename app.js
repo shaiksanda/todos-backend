@@ -213,7 +213,7 @@ app.post("/login", async (req, res) => {
         fullname: user.fullname,
         gender: user.gender,
       };
-      const jwtToken = jwt.sign(userPayload, "SECRET_TOKEN", { expiresIn: '1h' });
+      const jwtToken = jwt.sign(userPayload, "SECRET_TOKEN");
       return res.status(200).json({ message: "Login successful", jwtToken, });
     } else {
       return res.status(401).json({ message: "Invalid credentials" });
