@@ -61,9 +61,9 @@ const authenticateToken = (req, res, next) => {
 
 app.post("/todos", authenticateToken, async (req, res) => {
   try {
-    const { todo, tag, priority } = req.body;
+    const { todo, tag, priority,selectedDate } = req.body;
     const userId = req.user.userId;
-    const addTodo = await Todo.create({ todo, tag, priority, userId });
+    const addTodo = await Todo.create({ todo, tag, priority, userId,selectedDate });
     res.status(201).send({ message: "Todo Added successfully", todo: addTodo });
   } catch (error) {
     console.error(error);
