@@ -15,7 +15,6 @@ const todoSchema = new mongoose.Schema(
     
     priority: {
       type: String,
-      enum: ["low", "medium", "high"],
     
     },
     status: {
@@ -28,8 +27,12 @@ const todoSchema = new mongoose.Schema(
       ref: "User",
       
     },
+    selectedDate:{
+      type:Date,
+      required: true,
+    }
   },
-  { timestamps: true }
+  { timestamps: false }
 );
 
 module.exports = mongoose.model("Todo", todoSchema);

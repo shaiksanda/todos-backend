@@ -89,22 +89,17 @@ app.get("/users", authenticateToken, async (req, res) => {
 
 app.get("/todos", authenticateToken, async (req, res) => {
   const { tag, status, priority, selectedDate } = req.query;
-
   const filter = {};
-  
   // Add filters for tag, status, and priority if provided
   if (tag) filter.tag = tag;
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
-
-  // Add filter for selectedDate if provided
   if (selectedDate) {
-    const date = new Date(selectedDate);
-    const nextDay = new Date(date);
-    nextDay.setDate(date.getDate() + 1);
+    const date = new Date(selectedDate); // Convert selectedDate to Date object
+    const nextDate = new Date(date);
+    nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
 
-    // Filter by createdAt date range
-    filter.createdAt = { $gte: date, $lt: nextDay };
+    filter.date = { $gte: date, $lt: nextDate }; // Query for tasks within the date range
   }
 
   try {
