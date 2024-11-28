@@ -90,16 +90,20 @@ app.get("/users", authenticateToken, async (req, res) => {
 app.get("/todos", authenticateToken, async (req, res) => {
   const { tag, status, priority, selectedDate } = req.query;
   const filter = {};
+
   // Add filters for tag, status, and priority if provided
   if (tag) filter.tag = tag;
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
+
   if (selectedDate) {
-    const date = new Date(selectedDate); // Convert selectedDate to Date object
+    // Convert selectedDate to Date object
+    const date = new Date(selectedDate);
     const nextDate = new Date(date);
     nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
 
-    filter.date = { $gte: date, $lt: nextDate }; // Query for tasks within the date range
+    // Query for tasks within the date range
+    filter.selectedDate = { $gte: date.toISOString(), $lt: nextDate.toISOString() };
   }
 
   try {
@@ -112,6 +116,7 @@ app.get("/todos", authenticateToken, async (req, res) => {
     });
   }
 });
+
 
 
 app.put('/todos/:todoId',authenticateToken, async (req, res) => {
