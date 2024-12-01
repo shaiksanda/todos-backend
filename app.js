@@ -89,7 +89,8 @@ app.get("/users", authenticateToken, async (req, res) => {
 
 app.get("/todos", authenticateToken, async (req, res) => {
   const { tag, status, priority, selectedDate } = req.query;
-  const filter = {};
+  const userId = req.user.userId;
+  const filter = {userId};
 
   // Add filters for tag, status, and priority if provided
   if (tag) filter.tag = tag;
