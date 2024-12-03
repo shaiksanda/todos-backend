@@ -98,14 +98,13 @@ app.get("/todos", authenticateToken, async (req, res) => {
   if (priority) filter.priority = priority;
 
   if (selectedDate) {
-    // Convert selectedDate to Date object
+    // Only apply date filter if selectedDate is provided
     const date = new Date(selectedDate);
     const nextDate = new Date(date);
     nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
-
-    // Query for tasks within the date range
     filter.selectedDate = { $gte: date.toISOString(), $lt: nextDate.toISOString() };
   }
+  
 
   try {
     const todos = await Todo.find(filter); // Find todos with applied filters
