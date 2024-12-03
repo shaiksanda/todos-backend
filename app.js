@@ -146,7 +146,8 @@ app.put('/todos/:todoId',authenticateToken, async (req, res) => {
 app.delete("/todos",authenticateToken, async (req, res) => {
   try {
     // Deletes all todos in the collection
-    await Todo.deleteMany({});
+    const userId = req.user.id;
+    await Todo.deleteMany({ userId: userId });
     res.status(200).send({ message: "All todos deleted successfully" });
   } catch (error) {
     res.status(500).send({ message: "Error deleting todos", error: error.message });
