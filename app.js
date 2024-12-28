@@ -115,6 +115,7 @@ app.post("/todos", authenticateToken, async (req, res) => {
     const { todo, tag, priority,selectedDate } = req.body;
     const userId = req.user.userId;
     const addTodo = await Todo.create({ todo, tag, priority, userId,selectedDate });
+    await redisClient.flushAll()
     res.status(201).send({ message: "Todo Added successfully", todo: addTodo });
   } catch (error) {
     console.error(error);
@@ -179,6 +180,7 @@ app.put('/todos/:todoId',authenticateToken, async (req, res) => {
     if (!updatedTodo) {
       return res.status(404).send({ message: 'Todo not found' });
     }
+    await redisClient.flushAll()
 
     res.send({ message: 'Todo updated successfully', updatedTodo });
   } catch (error) {
@@ -192,6 +194,7 @@ app.delete("/todos",authenticateToken, async (req, res) => {
     // Deletes all todos in the collection
     const userId = req.user.id;
     await Todo.deleteMany({ userId: userId });
+    await redisClient.flushAll()
     res.status(200).send({ message: "All todos deleted successfully" });
   } catch (error) {
     res.status(500).send({ message: "Error deleting todos", error: error.message });
