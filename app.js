@@ -73,6 +73,42 @@ const authenticateToken = (req, res, next) => {
 };
 
 
+app.get("/todos", authenticateToken, async (req, res) => {
+  const { tag, status, priority, selectedDate } = req.query;
+  const userId = req.user.userId;
+  const filter = {userId};
+
+  // Add filters for tag, status, and priority if provided
+  if (tag) filter.tag = tag;
+  if (status) filter.status = status;
+  if (priority) filter.priority = priority;
+
+  if (selectedDate) {
+    // Only apply date filter if selectedDate is provided
+    const date = new Date(selectedDate);
+    const nextDate = new Date(date);
+    nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
+    filter.selectedDate = { $gte: date.toISOString(), $lt: nextDate.toISOString() };
+  }
+
+  const cacheKey=JSON.stringify(filter)
+  
+  try {
+    const cachedTodos = await redisClient.get(cacheKey);
+    if(cachedTodos){
+      return res.status(200).send(JSON.parse(cachedTodos));
+    }
+    const todos = await Todo.find(filter); // Find todos with applied filters
+    await redisClient.setEx(cacheKey, 60*60*24*10,JSON.stringify(todos));
+    res.status(200).send(todos);           // Send filtered todos
+  } catch (error) {
+    res.status(500).send({
+      message: "Error retrieving todos",
+      error: error.message,
+    });
+  }
+});
+
 
 app.post("/todos", authenticateToken, async (req, res) => {
   try {
@@ -100,35 +136,30 @@ app.get("/users", authenticateToken, async (req, res) => {
 });
 
 
-app.get("/todos", authenticateToken, async (req, res) => {
-  const { tag, status, priority, selectedDate } = req.query;
-  const userId = req.user.userId;
-  const filter = {userId};
 
-  // Add filters for tag, status, and priority if provided
-  if (tag) filter.tag = tag;
-  if (status) filter.status = status;
-  if (priority) filter.priority = priority;
 
-  if (selectedDate) {
-    // Only apply date filter if selectedDate is provided
-    const date = new Date(selectedDate);
-    const nextDate = new Date(date);
-    nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
-    filter.selectedDate = { $gte: date.toISOString(), $lt: nextDate.toISOString() };
+app.post('/forgotPassword',authenticateToken,async(req,res)=>{
+  const {username,password}=req.body;
+  try{
+    const dbUser=await User.findOne({username})
+  if(!dbUser){
+    return res.status(404).json({message:"User not found"})
   }
-  
-
-  try {
-    const todos = await Todo.find(filter); // Find todos with applied filters
-    res.status(200).send(todos);           // Send filtered todos
-  } catch (error) {
-    res.status(500).send({
-      message: "Error retrieving todos",
-      error: error.message,
-    });
+  const isSamePassword=await bcrypt.compare(password,dbUser.password)
+  if(isSamePassword){
+    console.log("Your previous password is the same. Please use a different one.")
+    return res.status(401).json({message:"Your previous password is the same. Please use a different one."})
   }
-});
+  const encryptedPassword=await bcrypt.hash(password,10)
+  await User.findOneAndUpdate(dbUser._id,{$set:{password:encryptedPassword}},{new:true})
+  return res.status(200).send({ message: "Password updated successfully!" });
+  }
+  catch(error){
+    console.error(error)
+    return res.status(500).send({  error_msg: "Error updating password" });
+  }
+
+})
 
 
 
