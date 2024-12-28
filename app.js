@@ -167,7 +167,7 @@ app.get("/users", authenticateToken, async (req, res) => {
 
 
 
-app.post('/forgotPassword',authenticateToken,async(req,res)=>{
+app.post('/forgotPassword',async(req,res)=>{
   const {username,password}=req.body;
   try{
     const dbUser=await User.findOne({username})
