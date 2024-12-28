@@ -115,7 +115,16 @@ app.post("/todos", authenticateToken, async (req, res) => {
     const { todo, tag, priority,selectedDate } = req.body;
     const userId = req.user.userId;
     const addTodo = await Todo.create({ todo, tag, priority, userId,selectedDate });
-    await redisClient.flushAll()
+    const cacheKey = `todos:user:${userId}`;
+    const todoData = {
+      id: addTodo.id,
+      todo: addTodo.todo,
+      tag: addTodo.tag,
+      priority: addTodo.priority,
+      userId: addTodo.userId,
+      selectedDate: addTodo.selectedDate,
+    };
+    await redisClient.hset(cacheKey, addTodo.id, JSON.stringify(todoData));
     res.status(201).send({ message: "Todo Added successfully", todo: addTodo });
   } catch (error) {
     console.error(error);
@@ -180,7 +189,19 @@ app.put('/todos/:todoId',authenticateToken, async (req, res) => {
     if (!updatedTodo) {
       return res.status(404).send({ message: 'Todo not found' });
     }
-    await redisClient.flushAll()
+    const userId=req.user.userId;
+    const cacheKey = `todos:user:${userId}`;
+    const cachedTodo = await redisClient.hget(cacheKey, todoId);
+    if(cachedTodo) {
+      const updatedTodoData = {
+        id: updatedTodo.id,
+        todo: updatedTodo.todo,
+        tag: updatedTodo.tag,
+        priority: updatedTodo.priority,
+        status: updatedTodo.status,
+      };
+      await redisClient.hset(cacheKey, todoId, JSON.stringify(updatedTodoData));
+    }
 
     res.send({ message: 'Todo updated successfully', updatedTodo });
   } catch (error) {
@@ -194,7 +215,12 @@ app.delete("/todos",authenticateToken, async (req, res) => {
     // Deletes all todos in the collection
     const userId = req.user.id;
     await Todo.deleteMany({ userId: userId });
-    await redisClient.flushAll()
+    const cacheKey = `todos:user:${userId}`;
+    const isCacheKeyExists = await redisClient.exists(cacheKey);
+
+    if (isCacheKeyExists) {
+      await redisClient.del(cacheKey); // Delete the specific user's todos from the cache
+    }
     res.status(200).send({ message: "All todos deleted successfully" });
   } catch (error) {
     res.status(500).send({ message: "Error deleting todos", error: error.message });
@@ -204,7 +230,7 @@ app.delete("/todos",authenticateToken, async (req, res) => {
 
 app.delete("/todos/:todoId",authenticateToken, async (req, res) => {
   const { todoId } = req.params;  // Extract todoId from the URL parameter
-  
+  const userId=req.user.useId;
   try {
     // Delete the todo by its ID
     const deletedTodo = await Todo.findByIdAndDelete(todoId);
@@ -212,6 +238,14 @@ app.delete("/todos/:todoId",authenticateToken, async (req, res) => {
     // If no todo was found with that ID
     if (!deletedTodo) {
       return res.status(404).send({ message: "Todo not found" });
+    }
+
+    const cacheKey=`todos:user:${userId}`
+    const cachedTodos=await redisClient.get(cacheKey)
+    if(cachedTodos){
+      const todos=JSON.parse(cachedTodos)
+      const updatedTodos=todos.filter(todo=>todo.id!==todoId)
+      await redisClient.set(cacheKey,JSON.stringify(updatedTodos))
     }
     
     res.status(200).send({ message: "Todo deleted successfully", todo: deletedTodo });
