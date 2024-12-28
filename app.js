@@ -73,35 +73,40 @@ const authenticateToken = (req, res, next) => {
 };
 
 
+// GET /todos
 app.get("/todos", authenticateToken, async (req, res) => {
   const { tag, status, priority, selectedDate } = req.query;
   const userId = req.user.userId;
-  const filter = {userId};
 
-  // Add filters for tag, status, and priority if provided
+  const filter = { userId };
   if (tag) filter.tag = tag;
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
 
   if (selectedDate) {
-    // Only apply date filter if selectedDate is provided
     const date = new Date(selectedDate);
     const nextDate = new Date(date);
-    nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
+    nextDate.setDate(date.getDate() + 1);
     filter.selectedDate = { $gte: date.toISOString(), $lt: nextDate.toISOString() };
   }
 
-  const cacheKey=JSON.stringify(filter)
-  
+  const cacheKey = `todos:user:${userId}`;
+
   try {
+    // Check Redis cache
     const cachedTodos = await redisClient.get(cacheKey);
-    if(cachedTodos){
+    if (cachedTodos) {
+      console.log("Returning cached todos");
       return res.status(200).send(JSON.parse(cachedTodos));
     }
-    const todos = await Todo.find(filter); // Find todos with applied filters
-    await redisClient.setEx(cacheKey, 60*60*24*10,JSON.stringify(todos));
-    res.status(200).send(todos);           // Send filtered todos
+
+    // Fetch from MongoDB if not in cache
+    const todos = await Todo.find(filter);
+    await redisClient.setEx(cacheKey, 60 * 60 * 24 * 10, JSON.stringify(todos)); // Cache for 10 days
+
+    res.status(200).send(todos);
   } catch (error) {
+    console.error(error);
     res.status(500).send({
       message: "Error retrieving todos",
       error: error.message,
@@ -109,28 +114,36 @@ app.get("/todos", authenticateToken, async (req, res) => {
   }
 });
 
-
+// POST /todos
 app.post("/todos", authenticateToken, async (req, res) => {
+  const { todo, tag, priority, selectedDate } = req.body;
+  const userId = req.user.userId;
+
   try {
-    const { todo, tag, priority,selectedDate } = req.body;
-    const userId = req.user.userId;
-    const addTodo = await Todo.create({ todo, tag, priority, userId,selectedDate });
+    // Add todo to MongoDB
+    const addTodo = await Todo.create({ todo, tag, priority, userId, selectedDate });
+
+    // Update Redis cache
     const cacheKey = `todos:user:${userId}`;
-    const todoData = {
-      id: addTodo.id,
-      todo: addTodo.todo,
-      tag: addTodo.tag,
-      priority: addTodo.priority,
-      userId: addTodo.userId,
-      selectedDate: addTodo.selectedDate,
-    };
-    await redisClient.hset(cacheKey, addTodo.id, JSON.stringify(todoData));
-    res.status(201).send({ message: "Todo Added successfully", todo: addTodo });
+    const cachedTodos = await redisClient.get(cacheKey);
+
+    if (cachedTodos) {
+      // If cache exists, append the new todo to it
+      const todosList = JSON.parse(cachedTodos);
+      todosList.push(addTodo); // Add new todo to cached list
+      await redisClient.setEx(cacheKey, 60 * 60 * 24 * 10, JSON.stringify(todosList)); // Update cache
+    } else {
+      // If no cache exists, create a new one with this todo
+      await redisClient.setEx(cacheKey, 60 * 60 * 24 * 10, JSON.stringify([addTodo]));
+    }
+
+    res.status(201).send({ message: "Todo added successfully", todo: addTodo });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Error adding todo", error: error.message });
   }
 });
+
 
 app.get("/users", authenticateToken, async (req, res) => {
   const userId = req.user.userId; // Extract userId from req.user
