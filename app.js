@@ -181,6 +181,7 @@ app.post('/forgotPassword',async(req,res)=>{
   }
   const encryptedPassword=await bcrypt.hash(password,10)
   await User.findOneAndUpdate({ _id: dbUser._id }, { $set: { password: encryptedPassword } }, { new: true })
+  await redisClient.del(`user:${username}`);
 
   return res.status(200).send({ message: "Password updated successfully!" });
   }
@@ -299,38 +300,74 @@ app.post("/register", async (req, res) => {
   }
 });
 
+// app.post("/login", async (req, res) => {
+//   try {
+//     const { username, password } = req.body;
+
+//     // Step 1: Check if user data is cached in Redis
+//     const cachedUser = await redisClient.get(`user:${username}`);
+//     let user;
+
+//     if (cachedUser) {
+//       console.log("Cache hit: User data retrieved from Redis");
+//       user = JSON.parse(cachedUser); // Parse cached user data
+      
+//     } else {
+//       console.log("Cache miss: Fetching user data from MongoDB");
+
+//       // Step 2: Fetch user from MongoDB if not cached
+//       user = await User.findOne({ username });
+//       if (!user) {
+//         return res.status(404).json({ message: "User not found" });
+//       }
+
+//       // Step 3: Cache user data in Redis for future logins
+//       await redisClient.setEx(`user:${username}`, 60*60*24*10, JSON.stringify(user)); // Cache for 1 hour
+//     }
+
+//     // Step 4: Validate password (always validate, even for cached users)
+//     const isPasswordMatched = await bcrypt.compare(password, user.password);
+//     if (!isPasswordMatched) {
+//       return res.status(401).json({ message: "Invalid credentials" });
+//     }
+
+//     // Step 5: Generate JWT token on successful login
+//     const userPayload = {
+//       userId: user._id,
+//       username: user.username,
+//       fullname: user.fullname,
+//       gender: user.gender,
+//     };
+
+//     const jwtToken = jwt.sign(userPayload, process.env.JWT_SECRET);
+
+//     return res.status(200).json({
+//       message: "Login successful",
+//       jwtToken,
+//     });
+//   } catch (error) {
+//     console.error("Error during login:", error);
+//     return res.status(500).json({ message: "Error logging in", error });
+//   }
+// });
+
 app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Step 1: Check if user data is cached in Redis
-    const cachedUser = await redisClient.get(`user:${username}`);
-    let user;
-
-    if (cachedUser) {
-      console.log("Cache hit: User data retrieved from Redis");
-      user = JSON.parse(cachedUser); // Parse cached user data
-      
-    } else {
-      console.log("Cache miss: Fetching user data from MongoDB");
-
-      // Step 2: Fetch user from MongoDB if not cached
-      user = await User.findOne({ username });
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Step 3: Cache user data in Redis for future logins
-      await redisClient.setEx(`user:${username}`, 60*60*24*10, JSON.stringify(user)); // Cache for 1 hour
+    // Step 1: Find user in MongoDB
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Step 4: Validate password (always validate, even for cached users)
+    // Step 2: Compare password
     const isPasswordMatched = await bcrypt.compare(password, user.password);
     if (!isPasswordMatched) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Step 5: Generate JWT token on successful login
+    // Step 3: Create JWT payload
     const userPayload = {
       userId: user._id,
       username: user.username,
@@ -338,18 +375,20 @@ app.post("/login", async (req, res) => {
       gender: user.gender,
     };
 
+    // Step 4: Generate token
     const jwtToken = jwt.sign(userPayload, process.env.JWT_SECRET);
 
+    // Step 5: Send response
     return res.status(200).json({
       message: "Login successful",
       jwtToken,
     });
+
   } catch (error) {
     console.error("Error during login:", error);
     return res.status(500).json({ message: "Error logging in", error });
   }
 });
-
 
 const port = process.env.PORT || 3004;
 
