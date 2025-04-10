@@ -180,7 +180,7 @@ app.post('/forgotPassword',async(req,res)=>{
     return res.status(401).json({message:"Your previous password is the same. Please use a different one."})
   }
   const encryptedPassword=await bcrypt.hash(password,10)
-  await User.findOneAndUpdate(dbUser._id,{$set:{password:encryptedPassword}},{new:true})
+  await User.findOneAndUpdate({_id:dbUser._id},{$set:{password:encryptedPassword}},{new:true})
   return res.status(200).send({ message: "Password updated successfully!" });
   }
   catch(error){
