@@ -191,7 +191,7 @@ app.delete("/todos/:todoId",authenticateToken, async (req, res) => {
       return res.status(404).send({ message: "Todo not found or unauthorized" });
     }
 
-    await Todo.findByIdAndDelete(todoId);
+    const deletedTodo=await Todo.findByIdAndDelete(todoId);
     res.status(200).send({ message: "Todo deleted successfully", todo: deletedTodo });
   } catch (error) {
     res.status(500).send({ message: "Error deleting todo", error: error.message });
