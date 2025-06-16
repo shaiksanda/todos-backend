@@ -130,7 +130,7 @@ app.post('/forgotPassword',async(req,res)=>{
   }
   const encryptedPassword=await bcrypt.hash(password,10)
   await User.findOneAndUpdate({ _id: dbUser._id }, { $set: { password: encryptedPassword } }, { new: true })
-  await redisClient.del(`user:${username}`);
+  
 
   return res.status(200).send({ message: "Password updated successfully!" });
   }
