@@ -145,13 +145,13 @@ app.post('/forgotPassword',async(req,res)=>{
 
 app.put('/todos/:todoId',authenticateToken, async (req, res) => {
   const { todoId } = req.params;
-  const { todo, tag, priority, status } = req.body;
+  const { todo, tag, priority, status,selectedDate } = req.body;
 
   try {
     const updatedTodo = await Todo.findByIdAndUpdate(
       todoId,  
       {
-        $set: { todo, tag, priority, status }
+        $set: { todo, tag, priority, status,selectedDate }
       },  
       { new: true }  // Option to return the updated document
     );
