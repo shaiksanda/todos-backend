@@ -240,59 +240,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.get("/dashboard", authenticateToken, async (req, res) => {
-  try {
-    const { userId } = req.user
-    const { days } = req.query
-    let filter = { userId }
 
-    let today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - parseInt(days));
-
-    const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 1);
-
-    filter.selectedDate = {
-      $gte: startDate,
-      $lt: endDate
-    };
-
-    const todos = await Todo.find(filter)
-    const aggregatedTodos = await Todo.aggregate([{ $match: { userId, selectedDate: { $gte: startDate, $lt: endDate }, status: "completed" } }, { $group: { _id: "$selectedDate", count: { $sum: 1 } } }, { $project: { _id: 0, date: "$_id", count: 1 } }, {
-      $sort: { date: 1 }
-    }])
-
-    let pendingTodos = completedTodos = 0
-    let high = low = medium = 0
-    todos.forEach(each => {
-      if (each.status === "pending") {
-        pendingTodos++
-      }
-      else {
-        completedTodos++
-      }
-      if (each.priority === "high") {
-        high++
-      }
-      else if (each.priority === 'low') {
-        low++
-      }
-      else {
-        medium++
-      }
-    })
-    const graph1_status_breakdown = { totalTodos: todos.length, pendingTodos, completedTodos }
-    const graph2_priority_breakdown = { high, low, medium }
-    res.status(200).json({ graph1_status_breakdown, graph2_priority_breakdown, graph3_completion_trend: aggregatedTodos })
-  }
-  catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-
-})
 
 const port = process.env.PORT || 3004;
 
