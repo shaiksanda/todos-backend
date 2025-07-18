@@ -1,0 +1,3 @@
+GET http://localhost:3004/dashboard?days=6
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NzQ3ZmVkMDlkNjI1YzBhZGQ0NTE5OWQiLCJ1c2VybmFtZSI6InNhbm5pIiwiZnVsbG5hbWUiOiJzYW5kYW5pIiwiZ2VuZGVyIjoibWFsZSIsImlhdCI6MTc1MjgyMDc2MX0.y2MygycfZs6s7qcE9E_GPn4qx0x0xhElEzXWuLV5yHo
