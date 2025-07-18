@@ -62,7 +62,7 @@ app.get("/todos", authenticateToken, async (req, res) => {
     date.setHours(0, 0, 0, 0);
     const nextDate = new Date(date);
     nextDate.setDate(date.getDate() + 1); // Set nextDate to the start of the next day
-    filter.selectedDate = { $gte: date.toISOString(), $lt: nextDate.toISOString() };
+    filter.selectedDate = { $gte: date, $lt: nextDate };
   }
 
   try {
@@ -100,6 +100,9 @@ app.get("/users", authenticateToken, async (req, res) => {
       let allUsers = await User.find({}, { _id: 0 })
       res.status(200).json(allUsers)
     }
+    else {
+      res.status(403).json({ message: "Forbidden: Admins only" })
+    }
 
   } catch (error) {
     res.status(500).json({ message: "Error retrieving user", error: error.message });
@@ -115,7 +118,6 @@ app.post('/forgotPassword', async (req, res) => {
     }
     const isSamePassword = await bcrypt.compare(password, dbUser.password)
     if (isSamePassword) {
-      console.log("Your previous password is the same. Please use a different one.")
       return res.status(401).json({ message: "Your previous password is the same. Please use a different one." })
     }
     const encryptedPassword = await bcrypt.hash(password, 10)
@@ -224,7 +226,7 @@ app.post("/login", async (req, res) => {
     };
 
     // Step 4: Generate token
-    const jwtToken = jwt.sign(userPayload, process.env.JWT_SECRET);
+    const jwtToken = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     // Step 5: Send response
     return res.status(200).json({
@@ -258,7 +260,7 @@ app.get("/dashboard", authenticateToken, async (req, res) => {
       $lt: endDate
     };
 
-    const todos = await Todo.find()
+    const todos = await Todo.find(filter)
     const aggregatedTodos = await Todo.aggregate([{ $match: { userId, selectedDate: { $gte: startDate, $lt: endDate }, status: "completed" } }, { $group: { _id: "$selectedDate", count: { $sum: 1 } } }, { $project: { _id: 0, date: "$_id", count: 1 } }, {
       $sort: { date: 1 }
     }])
