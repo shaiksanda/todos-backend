@@ -6,6 +6,7 @@ const User = require("./models/users");
 const Todo = require("./models/todos");
 
 const cors = require('cors');
+const { commandOptions } = require("redis");
 require('dotenv').config();
 
 const app = express();
@@ -239,6 +240,86 @@ app.post("/login", async (req, res) => {
     return res.status(500).json({ message: "Error logging in", error });
   }
 });
+
+app.get("/dashboard", authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user
+    const { days } = req.query
+
+    const endDate = new Date();
+    endDate.setUTCHours(0, 0, 0, 0);
+
+    const startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - days);
+
+    const todos = await Todo.find({ userId, selectedDate: { $gte: startDate, $lte: endDate } })
+
+    const getGraph1 = () => {
+      let pendingTodos = completedTodos = 0
+      todos.forEach(each => {
+        if (each.status === "pending") pendingTodos++
+        else completedTodos++
+      })
+      return { totalTodos: todos.length, pendingTodos, completedTodos }
+    }
+
+    const getGraph2 = () => {
+      let high = low = medium = 0
+      todos.forEach(each => {
+        if (each.priority === "low") low++
+        else if (each.priority === "medium") medium++
+        else high++
+      })
+      return { low, medium, high }
+    }
+
+    const getGraph3 = async () => {
+      const aggregatedTodos = await Todo.aggregate([
+        { $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: "$selectedDate", completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } } } },
+        { $project: { _id: 0, date: "$_id", completed: 1 } }
+      ])
+      return { completion_breakdown: aggregatedTodos }
+    }
+
+    const getGraph4 = async () => {
+      const aggregatedTodos = await Todo.aggregate([
+        { $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: "$selectedDate", total: { $sum: 1 }, completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } } } },
+        { $project: { _id: 0, date: "$_id", total: 1, completed: 1 } }
+      ])
+      return { created_vs_completed_breakdown: aggregatedTodos }
+    }
+
+    const getGraph5 = async () => {
+      const aggregatedTodos = await Todo.aggregate([
+        { $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: "$tag", count: { $sum: 1 } } },
+        { $project: { _id: 0, tag: "$_id", count: 1 } },
+        { $sort: { count: -1 } }
+      ])
+      return { tags: aggregatedTodos }
+    }
+
+    const status_breakdown = getGraph1()
+    const priority_breakdown = getGraph2()
+    const completion_trend = await getGraph3()
+    const created_vs_completed_trend = await getGraph4()
+    const tag_breakdown = await getGraph5()
+
+    res.status(200).json({
+      status_breakdown,
+      priority_breakdown,
+      completion_trend,
+      created_vs_completed_trend,
+      tag_breakdown
+    })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: err.message })
+  }
+})
 
 
 
