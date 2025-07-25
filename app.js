@@ -7,10 +7,11 @@ const Todo = require("./models/todos");
 
 const cors = require('cors');
 const { commandOptions } = require("redis");
+
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: "https://sanni-todos-app.vercel.app/", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -318,6 +319,100 @@ app.get("/dashboard", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: err.message })
+  }
+})
+
+app.get("/streak", authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.user
+    const { days } = req.query
+
+    let today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+
+    let endDate = today
+    let startDate = new Date(today)
+    startDate.setDate(endDate.getDate() - parseInt(days, 10))
+
+    // let tasks=await Todo.find({userId,selectedDate:{$gte:startDate,$lte:endDate}})
+    let summary = await Todo.aggregate([{ $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } }, 
+      { $group: { _id: null, completedCount: { $sum: {$cond: [{ $eq: ["$status", "completed"] }, 1, 0]} }, totalTasks: { $sum: 1 } } }])
+    const result = summary[0] || { completedCount: 0, totalTasks: 0 };
+
+    const activeDatesAgg = await Todo.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          selectedDate: { $gte: startDate, $lte: endDate },
+          status: "completed"
+        }
+      },
+      {
+        $group: {
+          _id: "$selectedDate"
+        }
+      },
+      {
+        $sort: {
+          _id: 1
+        }
+      }
+    ]);
+
+    const activeDates = activeDatesAgg.map(item => new Date(item._id));
+    const totalActiveDays = activeDates.length;
+
+    let maxStreak = 0;
+    let currentStreak = 0;
+
+    for (let i = 0; i < activeDates.length; i++) {
+      if (i === 0) {
+        currentStreak = 1;
+        maxStreak = 1;
+      } else {
+        const diff = (activeDates[i] - activeDates[i - 1]) / (1000 * 60 * 60 * 24);
+        if (diff === 1) {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+    }
+
+    const tasks = await Todo.find({
+      userId,
+      selectedDate: { $gte: startDate, $lte: endDate }
+    },"selectedDate");
+    
+
+    const dateMap = new Map();
+    tasks.forEach(each => {
+      const dateStr = each.selectedDate.toISOString().slice(0, 10)
+      dateMap.set(dateStr, (dateMap.get(dateStr) || 0) + 1);
+    })
+
+    const streakData = []
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dateClone = new Date(d);
+      const dateStr = dateClone.toISOString().slice(0, 10)
+      const count = dateMap.get(dateStr) || 0
+      const active = count > 0
+      streakData.push({ date: dateStr, active, count })
+    }
+
+    res.status(200).json({
+      summary: {
+        completedTasks: result.completedCount,
+        totalTasks: result.totalTasks,
+        activeDays: totalActiveDays,
+        maxStreak
+      },
+      streakData
+    });
+  }
+  catch(error){
+    res.status(500).json({error:error.message})
   }
 })
 
