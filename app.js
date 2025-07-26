@@ -6,12 +6,12 @@ const User = require("./models/users");
 const Todo = require("./models/todos");
 
 const cors = require('cors');
-const { commandOptions } = require("redis");
 
 require('dotenv').config();
 
 const app = express();
-app.use(cors({ origin: "https://sanni-todos-app.vercel.app", credentials: true }));
+app.use(cors())
+//app.use(cors({ origin: "https://sanni-todos-app.vercel.app", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
