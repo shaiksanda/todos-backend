@@ -66,42 +66,37 @@ app.post("/goal", authenticateToken, async (req, res) => {
 })
 
 app.get("/goals", authenticateToken, async (req, res) => {
-  const { userId } = req.user
-  const { type, month, year, quarter } = req.query
-  let filter = { userId }
+  const { userId } = req.user;
+  const { type, month, year, quarter } = req.query;
+
+  let filter = { userId };
+
   if (type) {
-    filter.type = type
-  }
-  if (type === "monthly") {
-    if (!month || !year) {
-      return res.status(400).json({ error: "Month and year required for monthly goals" })
+    filter.type = type;
+
+    if (type === "monthly") {
+      if (month) filter["timeframe.month"] = Number(month);
+      if (year) filter["timeframe.year"] = Number(year);
     }
-    filter["timeframe.month"] = Number(month)
-    filter["timeframe.year"] = Number(year);
-  }
-  else if (type === "quarterly") {
-    if (!quarter || !year) {
-      return res.status(400).json({ error: "Quarter and year required for quarterly goals" })
+
+    if (type === "quarterly") {
+      if (quarter) filter["timeframe.quarter"] = Number(quarter);
+      if (year) filter["timeframe.year"] = Number(year);
     }
-    filter["timeframe.quarter"] = Number(quarter)
-    filter["timeframe.year"] = Number(year)
-  }
-  else if (type === "yearly") {
-    if (!year) {
-      return res.status(400).json({ error: "Year required for yearly goals" });
+
+    if (type === "yearly") {
+      if (year) filter["timeframe.year"] = Number(year);
     }
-    filter["timeframe.year"] = Number(year);
   }
 
   try {
-    const goals = await Goal.find(filter)
-    res.status(200).json({ goals })
+    const goals = await Goal.find(filter);
+    res.status(200).json({ goals });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  catch (error) {
-    res.status(500).json({ error: error.message })
-  }
+});
 
-})
 
 app.put("/goal/:goalId", authenticateToken, async (req, res) => {
   const { userId } = req.user
