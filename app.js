@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("./models/users");
 const Todo = require("./models/todos");
+const Goal = require("./models/goals")
 
 const cors = require('cors');
 
@@ -48,6 +49,108 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+app.post("/goal", authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+  const { title, type, timeframe } = req.body
+
+  try {
+    await Goal.create({ title, type, timeframe, userId })
+    res.status(200).json({ message: "Goal Added Successfully" })
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+
+
+})
+
+app.get("/goals", authenticateToken, async (req, res) => {
+  const { userId } = req.user
+  const { type, month, year, quarter } = req.query
+  let filter = { userId }
+  if (type) {
+    filter.type = type
+  }
+  if (type === "monthly") {
+    if (!month || !year) {
+      return res.status(400).json({ error: "Month and year required for monthly goals" })
+    }
+    filter["timeframe.month"] = Number(month)
+    filter["timeframe.year"] = Number(year);
+  }
+  else if (type === "quarterly") {
+    if (!quarter || !year) {
+      return res.status(400).json({ error: "Quarter and year required for quarterly goals" })
+    }
+    filter["timeframe.quarter"] = Number(quarter)
+    filter["timeframe.year"] = Number(year)
+  }
+  else if (type === "yearly") {
+    if (!year) {
+      return res.status(400).json({ error: "Year required for yearly goals" });
+    }
+    filter["timeframe.year"] = Number(year);
+  }
+
+  try {
+    const goals = await Goal.find(filter)
+    res.status(200).json({ goals })
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+
+})
+
+app.put("/goal/:goalId", authenticateToken, async (req, res) => {
+  const { userId } = req.user
+  const { goalId } = req.params
+  const { title, status } = req.body
+  try {
+    const updates = {}
+    if (title !== undefined) updates.title = title;
+    if (status !== undefined) updates.status = status;
+
+    const updatedGoal = await Goal.findOneAndUpdate({ _id: goalId, userId }, updates, { new: true })
+    if (!updatedGoal) {
+      return res.status(404).json({ error: "Goal not Found or User is not Authorized" })
+    }
+    res.status(200).json({ message: "Goal Updated Successfully" })
+
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+
+
+})
+
+app.delete("/goals", authenticateToken, async (req, res) => {
+  const { userId } = req.user
+  try {
+    await Goal.deleteMany({ userId })
+    res.status(200).json({ message: "All Goals Deleted Successfully" })
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+app.delete("/goal/:goalId", authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+  const { goalId } = req.params
+  try {
+    const deletedGoal = await Goal.findOneAndDelete({ _id: goalId, userId })
+    if (!deletedGoal) {
+      return res.status(404).json({ error: "Goal not found or not authorized" })
+    }
+    res.status(200).json({ message: "Goal Deleted Successfully" })
+  }
+  catch (error) {
+    return res.status(500).json({ error: error.message })
+  }
+})
 
 app.get("/todos", authenticateToken, async (req, res) => {
   const { tag, status, priority, selectedDate } = req.query;
@@ -335,8 +438,8 @@ app.get("/streak", authenticateToken, async (req, res) => {
     startDate.setDate(endDate.getDate() - parseInt(days, 10))
 
     // let tasks=await Todo.find({userId,selectedDate:{$gte:startDate,$lte:endDate}})
-    let summary = await Todo.aggregate([{ $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } }, 
-      { $group: { _id: null, completedCount: { $sum: {$cond: [{ $eq: ["$status", "completed"] }, 1, 0]} }, totalTasks: { $sum: 1 } } }])
+    let summary = await Todo.aggregate([{ $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } },
+    { $group: { _id: null, completedCount: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } }, totalTasks: { $sum: 1 } } }])
     const result = summary[0] || { completedCount: 0, totalTasks: 0 };
 
     const activeDatesAgg = await Todo.aggregate([
@@ -383,8 +486,8 @@ app.get("/streak", authenticateToken, async (req, res) => {
     const tasks = await Todo.find({
       userId,
       selectedDate: { $gte: startDate, $lte: endDate }
-    },"selectedDate");
-    
+    }, "selectedDate");
+
 
     const dateMap = new Map();
     tasks.forEach(each => {
@@ -411,8 +514,8 @@ app.get("/streak", authenticateToken, async (req, res) => {
       streakData
     });
   }
-  catch(error){
-    res.status(500).json({error:error.message})
+  catch (error) {
+    res.status(500).json({ error: error.message })
   }
 })
 
