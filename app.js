@@ -101,11 +101,11 @@ app.get("/goals", authenticateToken, async (req, res) => {
 app.put("/goal/:goalId", authenticateToken, async (req, res) => {
   const { userId } = req.user
   const { goalId } = req.params
-  const { title, status } = req.body
+  const { title, isCompleted } = req.body
   try {
     const updates = {}
     if (title !== undefined) updates.title = title;
-    if (status !== undefined) updates.status = status;
+    if (isCompleted !== undefined) updates.isCompleted = isCompleted;
 
     const updatedGoal = await Goal.findOneAndUpdate({ _id: goalId, userId }, updates, { new: true })
     if (!updatedGoal) {
