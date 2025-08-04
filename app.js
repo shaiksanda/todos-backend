@@ -72,8 +72,9 @@ app.get("/feedbacks",authenticateToken,async(req,res)=>{
 app.put('/feedback/:feedbackId',authenticateToken,async(req,res)=>{
   const {userId}=req.user
   const {feedbackId}=req.params
-  const {type,status}=req.body
+  const {type,status,message}=req.body
   const updates={}
+  if(message!==undefined) updates.message=message
   if (type!==undefined) updates.type=type
   if (status!==undefined) updates.status=status
 
