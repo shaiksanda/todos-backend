@@ -46,7 +46,7 @@ const authenticateToken = (req, res, next) => {
       return res.status(401).json({ message: "Invalid or expired JWT Token" });
     }
 
-    req.user = { userId: payload.userId, username: payload.username };
+    req.user = { userId: payload.userId, username: payload.username,role:payload.role };
     next();
   });
 };
@@ -54,12 +54,13 @@ const authenticateToken = (req, res, next) => {
 app.get("/feedbacks",authenticateToken,async(req,res)=>{
   const {userId}=req.user
   const filter={userId}
+  
   const {status,type}=req.query
   if (status) filter.status=status
   if (type) filter.type=type
   
   try{
-    const feedbacks=await Feedback.find(filter).sort({ updatedAt: -1 }) 
+    const feedbacks=await Feedback.find(filter).populate("userId", "username").sort({ updatedAt: -1 }) 
     res.status(200).json({feedbacks})
 
   }
@@ -92,6 +93,7 @@ app.put('/feedback/:feedbackId',authenticateToken,async(req,res)=>{
 app.post('/feedback', authenticateToken, async (req, res) => {
   const { userId } = req.user
   const { type, message } = req.body
+  
   if (!type || !message) {
     return res.status(400).json({ error: "Type and message are required" });
   }
@@ -400,6 +402,7 @@ app.post("/login", async (req, res) => {
       username: user.username,
       fullname: user.fullname,
       gender: user.gender,
+      role:user.role
     };
 
     // Step 4: Generate token
@@ -409,6 +412,8 @@ app.post("/login", async (req, res) => {
     return res.status(200).json({
       message: "Login successful",
       jwtToken,
+      username:user.username,
+      role:user.role
     });
 
   } catch (error) {
