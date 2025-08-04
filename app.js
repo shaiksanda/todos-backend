@@ -52,8 +52,8 @@ const authenticateToken = (req, res, next) => {
 };
 
 app.get("/feedbacks",authenticateToken,async(req,res)=>{
-  const {userId}=req.user
-  const filter={userId}
+  
+  const filter={}
   
   const {status,type}=req.query
   if (status) filter.status=status
