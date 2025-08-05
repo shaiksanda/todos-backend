@@ -515,7 +515,7 @@ app.get("/streak", authenticateToken, async (req, res) => {
     let startDate = new Date(today)
     startDate.setDate(endDate.getDate() - parseInt(days, 10))
 
-    // let tasks=await Todo.find({userId,selectedDate:{$gte:startDate,$lte:endDate}})
+    //this is for getting total and completed tasks
     let summary = await Todo.aggregate([{ $match: { userId: new mongoose.Types.ObjectId(userId), selectedDate: { $gte: startDate, $lte: endDate } } },
     { $group: { _id: null, completedCount: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } }, totalTasks: { $sum: 1 } } }])
     const result = summary[0] || { completedCount: 0, totalTasks: 0 };
@@ -563,9 +563,9 @@ app.get("/streak", authenticateToken, async (req, res) => {
 
     const tasks = await Todo.find({
       userId,
-      selectedDate: { $gte: startDate, $lte: endDate }
+      selectedDate: { $gte: startDate, $lte: endDate },
+      status:"completed"
     }, "selectedDate");
-
 
     const dateMap = new Map();
     tasks.forEach(each => {
