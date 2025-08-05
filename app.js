@@ -46,55 +46,55 @@ const authenticateToken = (req, res, next) => {
       return res.status(401).json({ message: "Invalid or expired JWT Token" });
     }
 
-    req.user = { userId: payload.userId, username: payload.username,role:payload.role };
+    req.user = { userId: payload.userId, username: payload.username, role: payload.role };
     next();
   });
 };
 
-app.get("/feedbacks",authenticateToken,async(req,res)=>{
-  
-  const filter={}
-  
-  const {status,type}=req.query
-  if (status) filter.status=status
-  if (type) filter.type=type
-  
-  try{
-    const feedbacks=await Feedback.find(filter).populate("userId", "username").sort({ updatedAt: -1 }) 
-    res.status(200).json({feedbacks})
+app.get("/feedbacks", authenticateToken, async (req, res) => {
+
+  const filter = {}
+
+  const { status, type } = req.query
+  if (status) filter.status = status
+  if (type) filter.type = type
+
+  try {
+    const feedbacks = await Feedback.find(filter).populate("userId", "username").sort({ updatedAt: -1 })
+    res.status(200).json({ feedbacks })
 
   }
-  catch(err){
-    res.status(500).json({error:err.message})
+  catch (err) {
+    res.status(500).json({ error: err.message })
   }
 })
 
-app.put('/feedback/:feedbackId',authenticateToken,async(req,res)=>{
-  const {userId}=req.user
-  const {feedbackId}=req.params
-  const {type,status,message}=req.body
-  const updates={}
-  if(message!==undefined) updates.message=message
-  if (type!==undefined) updates.type=type
-  if (status!==undefined) updates.status=status
+app.put('/feedback/:feedbackId', authenticateToken, async (req, res) => {
+  const { userId } = req.user
+  const { feedbackId } = req.params
+  const { type, status, message } = req.body
+  const updates = {}
+  if (message !== undefined) updates.message = message
+  if (type !== undefined) updates.type = type
+  if (status !== undefined) updates.status = status
 
-  try{
-    const updatedFeedback=await Feedback.findOneAndUpdate({_id:feedbackId,userId},updates,{new:true})
-    if (!updatedFeedback){
-      return res.status(404).json({error:"Feedback Not Found or Not Authorized"})
+  try {
+    const updatedFeedback = await Feedback.findOneAndUpdate({ _id: feedbackId, userId }, updates, { new: true })
+    if (!updatedFeedback) {
+      return res.status(404).json({ error: "Feedback Not Found or Not Authorized" })
     }
-    res.status(200).json({message:`Feedback Updated Successfully`})
+    res.status(200).json({ message: `Feedback Updated Successfully` })
 
   }
-  catch(err){
-    res.status(500).json({error:err.message})
+  catch (err) {
+    res.status(500).json({ error: err.message })
   }
 })
 
 app.post('/feedback', authenticateToken, async (req, res) => {
   const { userId } = req.user
   const { type, message } = req.body
-  
+
   if (!type || !message) {
     return res.status(400).json({ error: "Type and message are required" });
   }
@@ -403,7 +403,7 @@ app.post("/login", async (req, res) => {
       username: user.username,
       fullname: user.fullname,
       gender: user.gender,
-      role:user.role
+      role: user.role
     };
 
     // Step 4: Generate token
@@ -413,8 +413,8 @@ app.post("/login", async (req, res) => {
     return res.status(200).json({
       message: "Login successful",
       jwtToken,
-      username:user.username,
-      role:user.role
+      username: user.username,
+      role: user.role
     });
 
   } catch (error) {
@@ -461,7 +461,24 @@ app.get("/dashboard", authenticateToken, async (req, res) => {
         { $group: { _id: "$selectedDate", completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } } } },
         { $project: { _id: 0, date: "$_id", completed: 1 } }
       ])
-      return { completion_breakdown: aggregatedTodos }
+      const dateMap = new Map()
+
+      aggregatedTodos.forEach(each => {
+        const dateStr = each.date.toISOString().slice(0, 10)
+        dateMap.set(dateStr, each.completed);
+      })
+
+      let lineChartData=[]
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+
+        const dateClone = new Date(d);
+        const dateStr = dateClone.toISOString().slice(0, 10)
+        lineChartData.push({date:dateStr,count:dateMap.get(dateStr)||0})
+      }
+
+
+      return { completion_breakdown: lineChartData }
     }
 
     const getGraph4 = async () => {
@@ -564,7 +581,7 @@ app.get("/streak", authenticateToken, async (req, res) => {
     const tasks = await Todo.find({
       userId,
       selectedDate: { $gte: startDate, $lte: endDate },
-      status:"completed"
+      status: "completed"
     }, "selectedDate");
 
     const dateMap = new Map();
