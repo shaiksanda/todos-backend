@@ -487,7 +487,19 @@ app.get("/dashboard", authenticateToken, async (req, res) => {
         { $group: { _id: "$selectedDate", total: { $sum: 1 }, completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } } } },
         { $project: { _id: 0, date: "$_id", total: 1, completed: 1 } }
       ])
-      return { created_vs_completed_breakdown: aggregatedTodos }
+      const dateMap=new Map()
+      aggregatedTodos.forEach(each=>{
+        const dateStr=each.date.toISOString().slice(0,10)
+        dateMap.set(dateStr,{total:each.total,completed:each.completed})
+      })
+      
+      let stackedBarChart=[]
+      for (let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1)){
+        const dateClone=new Date(d)
+        const dateStr=dateClone.toISOString().slice(0,10)
+        stackedBarChart.push({date:dateStr,total:dateMap.get(dateStr)?.total||0,completed:dateMap.get(dateStr)?.completed||0})
+      }
+      return { created_vs_completed_breakdown: stackedBarChart }
     }
 
     const getGraph5 = async () => {
